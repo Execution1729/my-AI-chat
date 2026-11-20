@@ -1,3 +1,4 @@
+# Forbid to upload:
 .streamlit/secrets.toml
 __pycache__/
 *.pyc

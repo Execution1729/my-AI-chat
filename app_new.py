@@ -63,12 +63,11 @@ if 'messages' not in st.session_state:
     st.session_state.messages = []
 
 st.title("今天有什么可以帮到您的？")
-
 def GEN_session_name():
     bj_time = datetime.now(timezone.utc) + timedelta(hours=8)
     return bj_time.strftime("%Y-%m-%d_%H-%M-%S") + "_" + str(uuid.uuid4())[:4]
 
-            
+# access SQL (CRUD) C = Create R = Read U = Update D = Delete            
 def load_sessions():
     try:
         conn = get_db_connection()
@@ -86,7 +85,7 @@ def load_sessions():
 def load_session(session_name):
     try:
         conn = get_db_connection()
-        cur = conn.cursor()
+        cur = conn.cursor()  # %s 防止 SQL注入攻击
         cur.execute('SELECT characteristic, messages FROM chat_history WHERE session_name = %s;', (session_name,))
         row = cur.fetchone()
         cur.close()
@@ -100,6 +99,8 @@ def load_session(session_name):
         st.error(f"会话加载失败: {e}")
 
 def save_session():
+    if not st.session_state.current_session or len(st.sessin_state.messages) == 0:
+        return
     if st.session_state.current_session:
         try:
             conn = get_db_connection()
@@ -116,7 +117,7 @@ def save_session():
                 st.session_state.characteristic, 
                 Json(st.session_state.messages) # 必须用 Json() 包装一下
             ))
-            conn.commit()
+            conn.commit() # upload to database
             cur.close()
             conn.close()
         except Exception as e:
@@ -133,7 +134,7 @@ def delete_session(session_name):
         
         if session_name == st.session_state.current_session:
             st.session_state.messages = []
-            st.session_state.current_session = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            st.session_state.current_session = ""
     except Exception as e:
         st.error(f"会话删除失败: {e}")
 

@@ -4,6 +4,8 @@ from datetime import datetime
 from openai import OpenAI
 import psycopg2
 from psycopg2.extras import Json
+from datetime import datetime,timezone,timedelta
+import uuid
 
 # streamlit run .\app_new.py
 
@@ -63,10 +65,9 @@ if 'messages' not in st.session_state:
 st.title("今天有什么可以帮到您的？")
 
 def GEN_session_name():
-    return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    bj_time = datetime.now(timezone.utc) + timedelta(hours=8)
+    return bj_time.strftime("%Y-%m-%d_%H-%M-%S") + "_" + str(uuid.uuid4())[:4]
 
-
-         
             
 def load_sessions():
     try:

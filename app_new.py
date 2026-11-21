@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st  # 导入库
 import os
 from datetime import datetime
 from openai import OpenAI
@@ -9,13 +9,13 @@ import uuid
 
 # streamlit run .\app_new.py
 
-DB_HOST = st.secrets["DB_HOST"]
+DB_HOST = st.secrets["DB_HOST"]  # 将个人隐私信息写入toml文件中防止泄露
 DB_USER = st.secrets["DB_USER"]
 DB_PASS = st.secrets["DB_PASS"]
 DB_NAME = "postgres"
 DB_PORT = "5432"
 
-def get_db_connection():
+def get_db_connection():  # 封装数据库连接函数
     return psycopg2.connect(
         host = DB_HOST,
         database = DB_NAME,
@@ -23,7 +23,7 @@ def get_db_connection():
         password = DB_PASS,
         port = DB_PORT
     )
-st.set_page_config(
+st.set_page_config(  # 设置网页布局
     page_title="Ex-stream-ly Cool App",
     page_icon="🧊",
     layout="wide", # centered/wide/none
@@ -31,8 +31,6 @@ st.set_page_config(
     menu_items={}
 )
 
-SUPABASE_URL = "https://zevndwpxtnhgdabzbqoh.supabase.co"
-SUPABASE_KEY = "sb_publishable_6nn2pdih_sMs9ePVlMjsRw_Od6G9KyU"
 
 import httpx
 from supabase import create_client
@@ -60,20 +58,20 @@ if 'current_session' not in st.session_state:
     st.session_state.current_session = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")  # 年 月 日 时 分 秒
 
 if 'messages' not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = []  # streamlit的记忆，否则会导致记录丢失
 
-st.title("今天有什么可以帮到您的？")
+st.title("今天有什么可以帮到您的？") # 初始化状态信息
 def GEN_session_name():
     bj_time = datetime.now(timezone.utc) + timedelta(hours=8)
     return bj_time.strftime("%Y-%m-%d_%H-%M-%S") + "_" + str(uuid.uuid4())[:4]
 
-# access SQL (CRUD) C = Create R = Read U = Update D = Delete            
-def load_sessions():
+# access SQL (CRUD) C = Create R = Read U = Update D = Delete 数据库的操作逻辑        
+def load_sessions(): # 去数据库查所有session_name展示历史记录
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         # 注意：这里的表名如果是大写，要加双引号，比如 "Chat_History"
-        cur.execute('SELECT DISTINCT session_name FROM chat_history ORDER BY session_name DESC;')
+        cur.execute('SELECT DISTINCT session_name FROM chat_history ORDER BY session_name DESC;') # 使用 PostgreSQL 语法
         rows = cur.fetchall()
         cur.close()
         conn.close()
@@ -82,7 +80,7 @@ def load_sessions():
         st.error(f"列表获取失败: {e}")
         return []
 
-def load_session(session_name):
+def load_session(session_name):  # 点击历史记录时把数据库的信息拉回并更新到 st.session_state
     try:
         conn = get_db_connection()
         cur = conn.cursor()  # %s 防止 SQL注入攻击
@@ -99,7 +97,7 @@ def load_session(session_name):
         st.error(f"会话加载失败: {e}")
 
 def save_session():
-    if not st.session_state.current_session or len(st.sessin_state.messages) == 0:
+    if not st.session_state.current_session or len(st.session_state.messages) == 0:
         return
     if st.session_state.current_session:
         try:
@@ -115,7 +113,7 @@ def save_session():
             ''', (
                 st.session_state.current_session, 
                 st.session_state.characteristic, 
-                Json(st.session_state.messages) # 必须用 Json() 包装一下
+                Json(st.session_state.messages) # 必须用 Json() 包装一下,数据库字段是Jsonb,列表不能存，要转
             ))
             conn.commit() # upload to database
             cur.close()
@@ -138,12 +136,12 @@ def delete_session(session_name):
     except Exception as e:
         st.error(f"会话删除失败: {e}")
 
-with st.sidebar:
+with st.sidebar:  # 网页面板设定
     st.header("Dear DeepSeek")
 
     st.subheader("控制面板")
 
-    def handle_new_chat():
+    def handle_new_chat():  # 新建对话后的流程如下
         save_session()
         st.session_state.messages = []
         st.session_state.current_session = GEN_session_name()
@@ -193,12 +191,12 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("今天有什么可以帮到您的？"):  
+if prompt := st.chat_input("点击发送消息"):  # 从 st.chat_input 拿到用户输入的 prompt
     st.session_state.messages.append({"role":"user","content":prompt})
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(prompt) # 显示prompt
     with st.chat_message("assistant"):
-        response_message = st.empty()
+        response_message = st.empty() # 用于接收流式输出返回的内容
         full_response = ""
 
     response = client.chat.completions.create(
@@ -211,12 +209,12 @@ if prompt := st.chat_input("今天有什么可以帮到您的？"):
     reasoning_effort="high",
     extra_body={"thinking": {"type": "enabled"}},
     )
-    for chunk in response:
+    for chunk in response:  
         if chunk.choices[0].delta.content is not None:
             content = chunk.choices[0].delta.content
             full_response += content
-            response_message.markdown(full_response + "")
+            response_message.markdown(full_response + "") # 实时刷新页面
             
-    st.session_state.messages.append({"role":"assistant","content": full_response})
+    st.session_state.messages.append({"role":"assistant","content": full_response}) # 自动存入数据库
 
     save_session()

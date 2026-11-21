@@ -5,8 +5,11 @@ __pycache__/
 sessions/
 *.jpg
 demo-seattle-weather-main/
-第*.py
-补充.py
-基于*.py
-json格式文件补充.py
-蓝桥杯.py
+RAG/
+Independent development and testing/
+Study from 0/
+chroma_db/
+test.pdf
+*.png
+IMPERATIVE!!!/
+*.pdf
